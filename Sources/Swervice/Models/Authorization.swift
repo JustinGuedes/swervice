@@ -3,6 +3,7 @@ import Foundation
 public enum Authorization {
     case basic(String, String)
     case bearer(String)
+    case custom(String)
 }
 
 extension Authorization {
@@ -18,6 +19,8 @@ extension Authorization {
             return "Basic \(token.base64EncodedString())"
         case .bearer(let token):
             return "Bearer \(token)"
+        case .custom(let custom):
+            return custom
         }
     }
     
