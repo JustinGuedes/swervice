@@ -14,7 +14,7 @@ extension URLSession: ServiceClient {
                     let result = try decoder.decode(T.self, from: data)
                     continuation.resume(returning: result)
                 } catch {
-                    continuation.resume(throwing: error)
+                    continuation.resume(throwing: URLSessionError.decoding(data, error))
                 }
                 
             }

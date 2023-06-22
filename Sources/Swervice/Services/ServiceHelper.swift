@@ -3,6 +3,7 @@ import Foundation
 public protocol ServiceHelper {
     var config: ServiceHelperConfig { get }
     var client: ServiceClient { get }
+    var interceptor: ServiceErrorInterceptor { get }
 }
 
 public extension ServiceHelper {
@@ -11,11 +12,15 @@ public extension ServiceHelper {
         return URLSession.shared
     }
     
+    var interceptor: ServiceErrorInterceptor {
+        return DefaultServiceErrorInterceptor()
+    }
+    
     func get<T: Decodable>(from path: String) async throws -> T {
         let request = try builder(for: .get, with: path)
             .build()
         
-        return try await client.send(request: request, decoder: config.decoder)
+        return try await send(request: request, decoder: config.decoder)
     }
     
     func get<T: Decodable>(with parameters: [String: String], from path: String) async throws -> T {
@@ -24,7 +29,7 @@ public extension ServiceHelper {
             .set(queries: queries)
             .build()
         
-        return try await client.send(request: request, decoder: config.decoder)
+        return try await send(request: request, decoder: config.decoder)
     }
     
     func post<T: Decodable>(_ form: [String: String], to path: String) async throws -> T {
@@ -32,7 +37,7 @@ public extension ServiceHelper {
             .set(body: form)
             .build()
         
-        return try await client.send(request: request, decoder: config.decoder)
+        return try await send(request: request, decoder: config.decoder)
     }
     
     func post<T: Encodable, U: Decodable>(_ request: T, to path: String) async throws -> U {
@@ -40,7 +45,7 @@ public extension ServiceHelper {
             .set(body: request, encoder: config.encoder)
             .build()
         
-        return try await client.send(request: request, decoder: config.decoder)
+        return try await send(request: request, decoder: config.decoder)
     }
     
     func put<T: Decodable>(_ form: [String: String], to path: String) async throws -> T {
@@ -48,7 +53,7 @@ public extension ServiceHelper {
             .set(body: form)
             .build()
         
-        return try await client.send(request: request, decoder: config.decoder)
+        return try await send(request: request, decoder: config.decoder)
     }
     
     func put<T: Encodable, U: Decodable>(_ request: T, to path: String) async throws -> U {
@@ -56,7 +61,7 @@ public extension ServiceHelper {
             .set(body: request, encoder: config.encoder)
             .build()
         
-        return try await client.send(request: request, decoder: config.decoder)
+        return try await send(request: request, decoder: config.decoder)
     }
     
     func builder(for method: HTTPMethod, with path: String) throws -> URLRequestBuilder {
@@ -71,6 +76,18 @@ public extension ServiceHelper {
         }
         
         return builder
+    }
+    
+}
+
+private extension ServiceHelper {
+    
+    func send<T: Decodable>(request: URLRequest, decoder: JSONDecoder) async throws -> T {
+        do {
+            return try await client.send(request: request, decoder: decoder)
+        } catch {
+            throw await interceptor.intercept(error)
+        }
     }
     
 }
